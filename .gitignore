@@ -1,0 +1,19 @@
+node_modules/
+out/
+*.vsix
+images/
+
+# Plugin-generated workspace files (contain user-specific paths/hosts)
+.vscode/sftp.json
+.vscode/sync-remote.ps1
+.vscode/sync-remote.sh
+.vscode/remote-debug.ps1
+.vscode/remote-debug.sh
+.vscode/remote-config-gen.json
+.vscode/remote-debug.log
+.vscode/launch.json
+.vscode/tasks.json
+.claude/
+.trae/
+AGENTS.md
+PROJECT.md

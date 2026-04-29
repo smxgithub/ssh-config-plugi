@@ -1,0 +1,13 @@
+.vscode
+src
+tsconfig.json
+*.vsix
+AGENTS.md
+PROJECT.md
+.claude/
+.trae/
+images/
+F5.png
+after_install.png
+plugin_example.png
+out/_smoketest*

@@ -1,0 +1,65 @@
+{
+  "name": "remote-config-gen",
+  "displayName": "Remote Config Generator",
+  "description": "One-click remote Python run & debug over SSH with conda. Generates sync helpers and AI agent rules for Trae, Claude Code, and Codex.",
+  "version": "1.0.0",
+  "publisher": "rcg-dev",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smxgithub/ssh-config-plugi.git"
+  },
+  "homepage": "https://github.com/smxgithub/ssh-config-plugi",
+  "bugs": {
+    "url": "https://github.com/smxgithub/ssh-config-plugi/issues"
+  },
+  "keywords": [
+    "remote",
+    "ssh",
+    "debug",
+    "python",
+    "conda",
+    "trae",
+    "debugpy"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Debuggers", "Programming Languages"],
+  "activationEvents": [
+    "workspaceContains:.vscode/remote-config-gen.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "remote-config-gen.generate",
+        "title": "Generate Remote Dev Configs"
+      },
+      {
+        "command": "remote-config-gen.runDebug",
+        "title": "Debug on Remote",
+        "category": "Remote Config"
+      },
+      {
+        "command": "remote-config-gen.runRemote",
+        "title": "Run on Remote",
+        "category": "Remote Config"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1",
+    "ssh-config": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
