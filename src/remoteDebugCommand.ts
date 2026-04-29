@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as net from 'net';
 import { spawn, execFile, ChildProcess } from 'child_process';
 import { escapeBashSingleQuoted } from './shellEscape';
-
-const LAUNCH_CONFIG_NAME = 'Run on Remote (Python)';
 
 export interface RemoteConfig {
     host: string;
@@ -65,6 +64,17 @@ function execFileAsync(
                 }
             }
         );
+    });
+}
+
+function findFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+        const server = net.createServer();
+        server.listen(0, '127.0.0.1', () => {
+            const port = (server.address() as net.AddressInfo).port;
+            server.close(() => resolve(port));
+        });
+        server.on('error', reject);
     });
 }
 
@@ -196,7 +206,7 @@ function parseErrorMessage(stderr: string, cfg: RemoteConfig): string | undefine
 
 // --- Build remote commands ---
 
-function buildRemoteDebugCommand(cfg: RemoteConfig, remoteRelative: string): string {
+function buildRemoteDebugCommand(cfg: RemoteConfig, remoteRelative: string, port: number): string {
     const settings = getSettings();
     const root = escapeBashSingleQuoted(cfg.remoteProjectRoot);
     const py = settings.pythonBinary;
@@ -204,7 +214,6 @@ function buildRemoteDebugCommand(cfg: RemoteConfig, remoteRelative: string): str
     const remoteFile = escapeBashSingleQuoted(
         `${cfg.remoteProjectRoot.replace(/\/+$/, '')}/${remoteRelative.replace(/\\/g, '/')}`
     );
-    const port = cfg.debugPort || settings.debugPort;
 
     const ensureDebugpy =
         `(${py} -c 'import debugpy' 2>/dev/null || ` +
@@ -302,7 +311,16 @@ export async function runRemoteDebug(): Promise<void> {
     output.show(true);
 
     const settings = getSettings();
-    const port = cfg.debugPort || settings.debugPort;
+
+    // Auto-pick a free local port so multiple debug sessions can run simultaneously.
+    let port: number;
+    try {
+        port = await findFreePort();
+    } catch {
+        port = settings.debugPort;
+    }
+
+    const debugSessionName = `Remote Debug: ${path.basename(relativeFile)} (${cfg.host}:${port})`;
 
     await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Debug on Remote', cancellable: true },
@@ -322,11 +340,11 @@ export async function runRemoteDebug(): Promise<void> {
                 return;
             }
 
-            // Step 2: start debugpy
+            // Step 2: start debugpy on a dynamically chosen port
             progress.report({ message: 'Starting debugpy on remote...' });
             output.appendLine(`[plugin] starting remote debug for ${relativeFile} on port ${port}`);
 
-            const remoteCmd = buildRemoteDebugCommand(cfg, relativeFile);
+            const remoteCmd = buildRemoteDebugCommand(cfg, relativeFile, port);
             const child = spawn(
                 'ssh',
                 [
@@ -363,11 +381,22 @@ export async function runRemoteDebug(): Promise<void> {
                 if (listeningRegex.test(buffer)) {
                     attached = true;
                     progress.report({ message: 'Attaching debugger...' });
-                    output.appendLine(`[plugin] detected debugpy listening; attaching debugger...`);
+                    output.appendLine(`[plugin] detected debugpy listening; attaching debugger on port ${port}...`);
                     try {
-                        const ok = await vscode.debug.startDebugging(folder, LAUNCH_CONFIG_NAME);
+                        // Inline debug config with dynamic port — no launch.json dependency.
+                        const ok = await vscode.debug.startDebugging(folder, {
+                            type: 'debugpy',
+                            request: 'attach',
+                            name: debugSessionName,
+                            connect: { host: 'localhost', port },
+                            pathMappings: [{
+                                localRoot: '${workspaceFolder}',
+                                remoteRoot: cfg.remoteProjectRoot,
+                            }],
+                            justMyCode: false,
+                        });
                         if (ok) {
-                            vscode.window.showInformationMessage('Debugger attached to remote.');
+                            vscode.window.showInformationMessage(`Debugger attached (port ${port}).`);
                         } else {
                             output.appendLine('[plugin] vscode.debug.startDebugging returned false.');
                             vscode.window.showErrorMessage('Failed to start debug session.');
@@ -406,7 +435,7 @@ export async function runRemoteDebug(): Promise<void> {
             });
 
             const sub = vscode.debug.onDidTerminateDebugSession((session) => {
-                if (session.name === LAUNCH_CONFIG_NAME) {
+                if (session.name === debugSessionName) {
                     output.appendLine('[plugin] debug session terminated; killing ssh');
                     try { child.kill(); } catch { /* ignore */ }
                     sub.dispose();

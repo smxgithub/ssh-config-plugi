@@ -2,7 +2,7 @@
   "name": "remote-config-gen",
   "displayName": "Remote Config Generator",
   "description": "One-click remote Python run & debug over SSH. Supports conda, virtualenv, and system Python. Generates sync helpers and AI agent rules for Trae, Claude Code, and Codex.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "rcg-dev",
   "license": "MIT",
   "icon": "icon.png",
