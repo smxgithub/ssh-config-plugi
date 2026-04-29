@@ -2,6 +2,9 @@ node_modules/
 out/
 *.vsix
 images/
+F5.png
+after_install.png
+plugin_example.png
 
 # Plugin-generated workspace files (contain user-specific paths/hosts)
 .vscode/sftp.json

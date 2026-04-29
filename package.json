@@ -1,8 +1,8 @@
 {
   "name": "remote-config-gen",
   "displayName": "Remote Config Generator",
-  "description": "One-click remote Python run & debug over SSH with conda. Generates sync helpers and AI agent rules for Trae, Claude Code, and Codex.",
-  "version": "1.0.0",
+  "description": "One-click remote Python run & debug over SSH. Supports conda, virtualenv, and system Python. Generates sync helpers and AI agent rules for Trae, Claude Code, and Codex.",
+  "version": "1.1.0",
   "publisher": "rcg-dev",
   "license": "MIT",
   "icon": "icon.png",
@@ -20,6 +20,8 @@
     "debug",
     "python",
     "conda",
+    "virtualenv",
+    "venv",
     "trae",
     "debugpy"
   ],
@@ -27,6 +29,7 @@
     "vscode": "^1.85.0"
   },
   "categories": ["Debuggers", "Programming Languages"],
+  "extensionDependencies": ["ms-python.debugpy"],
   "activationEvents": [
     "workspaceContains:.vscode/remote-config-gen.json"
   ],
@@ -46,8 +49,34 @@
         "command": "remote-config-gen.runRemote",
         "title": "Run on Remote",
         "category": "Remote Config"
+      },
+      {
+        "command": "remote-config-gen.openTerminal",
+        "title": "Terminal on Remote",
+        "category": "Remote Config"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Remote Config Generator",
+      "properties": {
+        "remoteConfigGen.debugPort": {
+          "type": "number",
+          "default": 5678,
+          "description": "Port for remote debugpy (also used for SSH port forwarding)."
+        },
+        "remoteConfigGen.pythonBinary": {
+          "type": "string",
+          "default": "python",
+          "description": "Python binary name on the remote (e.g., python3, python3.10)."
+        },
+        "remoteConfigGen.syncExcludes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["__pycache__", ".git", "*.pyc", "node_modules", ".venv", ".mypy_cache"],
+          "description": "Glob patterns to exclude when syncing project to remote."
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

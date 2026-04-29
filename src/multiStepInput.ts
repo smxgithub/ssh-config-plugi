@@ -15,13 +15,19 @@ interface CondaEnvQuickPickItem extends vscode.QuickPickItem {
     manualEntry?: boolean;
 }
 
+interface EnvTypeQuickPickItem extends vscode.QuickPickItem {
+    envType: 'conda' | 'venv' | 'system';
+}
+
 const MANUAL_ENTRY_LABEL = '$(edit) Type env name manually...';
 const DEFAULT_DEBUG_PORT = 5678;
 const DEFAULT_CONDA_ROOT = '~/miniconda3';
 
-interface CondaSelection {
-    condaEnv: string;
-    condaRoot: string;
+interface EnvSelection {
+    envType: 'conda' | 'venv' | 'system';
+    condaEnv?: string;
+    condaRoot?: string;
+    venvPath?: string;
 }
 
 async function promptCondaRootManually(): Promise<string | undefined> {
@@ -42,7 +48,7 @@ async function promptCondaEnvManually(): Promise<string | undefined> {
     });
 }
 
-async function manualCondaFallback(): Promise<CondaSelection | undefined> {
+async function manualCondaFallback(): Promise<EnvSelection | undefined> {
     const condaEnv = await promptCondaEnvManually();
     if (!condaEnv) {
         return undefined;
@@ -51,10 +57,10 @@ async function manualCondaFallback(): Promise<CondaSelection | undefined> {
     if (!condaRoot) {
         return undefined;
     }
-    return { condaEnv, condaRoot };
+    return { envType: 'conda', condaEnv, condaRoot };
 }
 
-async function pickCondaSelection(hostAlias: string): Promise<CondaSelection | undefined> {
+async function pickCondaSelection(hostAlias: string): Promise<EnvSelection | undefined> {
     let result: { envs: CondaEnv[]; condaRoot: string } | undefined;
     try {
         result = await vscode.window.withProgress(
@@ -84,8 +90,8 @@ async function pickCondaSelection(hostAlias: string): Promise<CondaSelection | u
     items.push({ label: MANUAL_ENTRY_LABEL, manualEntry: true });
 
     const picked = await vscode.window.showQuickPick(items, {
-        title: 'Remote Config Generator (4/4)',
-        placeHolder: `Select remote conda environment (conda root: ${result.condaRoot})`,
+        title: 'Select conda environment',
+        placeHolder: `conda root: ${result.condaRoot}`,
     });
     if (!picked) {
         return undefined;
@@ -96,7 +102,57 @@ async function pickCondaSelection(hostAlias: string): Promise<CondaSelection | u
     if (!picked.env) {
         return undefined;
     }
-    return { condaEnv: picked.env.name, condaRoot: result.condaRoot };
+    return { envType: 'conda', condaEnv: picked.env.name, condaRoot: result.condaRoot };
+}
+
+async function pickVenvPath(): Promise<EnvSelection | undefined> {
+    const venvPath = await vscode.window.showInputBox({
+        title: 'Remote virtualenv path',
+        prompt: 'Absolute path to virtual environment on remote (e.g., /home/user/project/.venv)',
+        placeHolder: '/home/user/project/.venv',
+        validateInput: (v) => v.startsWith('/') ? null : 'Must be an absolute path',
+    });
+    if (!venvPath) {
+        return undefined;
+    }
+    return { envType: 'venv', venvPath };
+}
+
+async function pickEnvSelection(hostAlias: string): Promise<EnvSelection | undefined> {
+    const envTypes: EnvTypeQuickPickItem[] = [
+        {
+            label: '$(package) Conda',
+            description: 'Auto-detect conda environments on the remote',
+            envType: 'conda',
+        },
+        {
+            label: '$(folder) Virtualenv / venv',
+            description: 'Specify a virtual environment path on the remote',
+            envType: 'venv',
+        },
+        {
+            label: '$(symbol-misc) System Python',
+            description: 'Use system Python directly (no environment manager)',
+            envType: 'system',
+        },
+    ];
+
+    const picked = await vscode.window.showQuickPick(envTypes, {
+        title: 'Remote Config Generator — Python environment type',
+        placeHolder: 'How is Python managed on your remote machine?',
+    });
+    if (!picked) {
+        return undefined;
+    }
+
+    switch (picked.envType) {
+        case 'conda':
+            return pickCondaSelection(hostAlias);
+        case 'venv':
+            return pickVenvPath();
+        case 'system':
+            return { envType: 'system' };
+    }
 }
 
 export async function runGenerateFlow(): Promise<void> {
@@ -157,19 +213,20 @@ export async function runGenerateFlow(): Promise<void> {
         return;
     }
 
-    // Step 4: Conda env + conda root (auto-detect from remote, with manual fallback)
-    const condaSelection = await pickCondaSelection(picked.entry.host);
-    if (!condaSelection) {
+    // Step 4: Python environment type + env details
+    const envSelection = await pickEnvSelection(picked.entry.host);
+    if (!envSelection) {
         return;
     }
 
-    // Generate all config files
     generateAll({
         host: picked.entry,
         sshConfigPath,
         remoteProjectRoot: remoteRoot,
-        condaEnv: condaSelection.condaEnv,
-        condaRoot: condaSelection.condaRoot,
+        envType: envSelection.envType,
+        condaEnv: envSelection.condaEnv ?? '',
+        condaRoot: envSelection.condaRoot ?? '',
+        venvPath: envSelection.venvPath ?? '',
         workspaceRoot,
         debugPort: DEFAULT_DEBUG_PORT,
     });

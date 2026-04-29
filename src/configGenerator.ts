@@ -12,8 +12,10 @@ export interface GenerateOptions {
     host: SshHostEntry;
     sshConfigPath: string;
     remoteProjectRoot: string;
+    envType: 'conda' | 'venv' | 'system';
     condaEnv: string;
     condaRoot: string;
+    venvPath: string;
     workspaceRoot: string;
     debugPort: number;
 }
@@ -660,8 +662,10 @@ export function generateAll(opts: GenerateOptions): void {
     const pluginConfig = {
         host: opts.host.host,
         remoteProjectRoot: opts.remoteProjectRoot,
-        condaRoot: opts.condaRoot,
-        condaEnv: opts.condaEnv,
+        envType: opts.envType,
+        condaRoot: opts.condaRoot || undefined,
+        condaEnv: opts.condaEnv || undefined,
+        venvPath: opts.venvPath || undefined,
         debugPort: opts.debugPort,
     };
     fs.writeFileSync(
