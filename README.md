@@ -2,6 +2,8 @@
 
 Edit Python locally in Trae (or VS Code), debug it on a remote machine over SSH using a remote conda env as the interpreter — PyCharm-style. Also generates SSH-aware rule files so AI agents (Claude Code, Trae's agent, Codex) drive the same remote workflow.
 
+**[Getting Started Tutorial (with screenshots)](docs/tutorial.md)**
+
 ## What this extension does
 
 One command (`Generate Remote Dev Configs`) sets up a workspace for a remote-execution loop:
