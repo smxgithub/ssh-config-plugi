@@ -5,6 +5,7 @@ import * as path from 'path';
 import { parseSshConfig, SshHostEntry } from './sshConfigParser';
 import { generateAll } from './configGenerator';
 import { detectCondaEnvs, CondaEnv, CondaProbeError } from './remoteCondaProbe';
+import { setupLocalIntelliSense } from './localEnvSetup';
 
 interface HostQuickPickItem extends vscode.QuickPickItem {
     entry: SshHostEntry;
@@ -219,7 +220,7 @@ export async function runGenerateFlow(): Promise<void> {
         return;
     }
 
-    generateAll({
+    const opts = {
         host: picked.entry,
         sshConfigPath,
         remoteProjectRoot: remoteRoot,
@@ -229,9 +230,32 @@ export async function runGenerateFlow(): Promise<void> {
         venvPath: envSelection.venvPath ?? '',
         workspaceRoot,
         debugPort: DEFAULT_DEBUG_PORT,
-    });
+    };
+    generateAll(opts);
 
     vscode.window.showInformationMessage(
         `Generated remote configs for ${picked.label} in workspace.`
     );
+
+    // Optional: set up local IntelliSense environment
+    const setupChoice = await vscode.window.showInformationMessage(
+        'Set up local IntelliSense? Mirrors remote packages locally so Pylance provides syntax checking and autocomplete.',
+        'Yes (Recommended)',
+        'Skip'
+    );
+    if (setupChoice === 'Yes (Recommended)') {
+        const cfg = {
+            host: picked.entry.host,
+            remoteProjectRoot: remoteRoot,
+            envType: envSelection.envType,
+            condaRoot: envSelection.condaRoot,
+            condaEnv: envSelection.condaEnv,
+            venvPath: envSelection.venvPath,
+            debugPort: DEFAULT_DEBUG_PORT,
+        };
+        await vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: 'Setting up IntelliSense' },
+            (progress) => setupLocalIntelliSense(cfg as any, workspaceRoot, progress)
+        );
+    }
 }

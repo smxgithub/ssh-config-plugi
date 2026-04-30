@@ -10,6 +10,7 @@ import {
     loadConfig,
     syncFile,
 } from './remoteDebugCommand';
+import { refreshLocalIntelliSense } from './localEnvSetup';
 
 let debugButton: vscode.StatusBarItem | undefined;
 let runButton: vscode.StatusBarItem | undefined;
@@ -41,6 +42,21 @@ export function activate(context: vscode.ExtensionContext) {
         async () => {
             await runGenerateFlow();
             updateButtonVisibility();
+
+            // Prompt SFTP extension install if missing
+            if (!vscode.extensions.getExtension('Natizyskunk.sftp')) {
+                const pick = await vscode.window.showInformationMessage(
+                    'Install SFTP extension for automatic upload-on-save? (Optional — the plugin has built-in sync, but SFTP provides a nice fallback)',
+                    'Install',
+                    'Skip'
+                );
+                if (pick === 'Install') {
+                    await vscode.commands.executeCommand(
+                        'workbench.extensions.installExtension',
+                        'Natizyskunk.sftp'
+                    );
+                }
+            }
         }
     );
     context.subscriptions.push(generateCmd);
@@ -53,6 +69,14 @@ export function activate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(
         vscode.commands.registerCommand('remote-config-gen.openTerminal', () => openRemoteTerminal())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('remote-config-gen.refreshIntelliSense', () => {
+            const ws = vscode.workspace.workspaceFolders?.[0];
+            if (ws) {
+                refreshLocalIntelliSense(ws.uri.fsPath);
+            }
+        })
     );
 
     debugButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
