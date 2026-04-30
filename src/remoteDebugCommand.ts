@@ -244,7 +244,9 @@ function buildRemoteRunCommand(cfg: RemoteConfig, remoteRelative: string): strin
 function buildRemoteShellCommand(cfg: RemoteConfig): string {
     const root = escapeBashSingleQuoted(cfg.remoteProjectRoot);
     const activation = buildEnvActivation(cfg, getSettings().pythonBinary);
-    return `cd '${root}' && ${activation} && unset DISPLAY && exec bash`;
+    // Source .bashrc with stderr suppressed to hide X11 errors (e.g., setxkbmap
+    // calling "Cannot open display"), then activate the Python env on top.
+    return `cd '${root}' && exec bash --rcfile <(echo "source ~/.bashrc 2>/dev/null; ${activation}")`;
 }
 
 // --- Validation ---
