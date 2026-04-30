@@ -325,11 +325,12 @@ export async function runRemoteDebug(): Promise<void> {
     await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Debug on Remote', cancellable: true },
         async (progress, token) => {
-            // Step 1: save + sync
-            progress.report({ message: 'Saving & syncing project...' });
+            // Step 1: save all buffers (triggers on-save file watcher for each),
+            // then explicitly sync the active file to guarantee it's up to date.
+            progress.report({ message: 'Syncing...' });
             await vscode.workspace.saveAll(false);
             try {
-                await syncProject(cfg, wsPath, output, settings.syncExcludes);
+                await syncFile(cfg, wsPath, relativeFile, output);
             } catch (e) {
                 const msg = (e as Error).message;
                 vscode.window.showErrorMessage(`Sync failed: ${msg}`);
@@ -469,12 +470,12 @@ export async function runRemoteRun(): Promise<void> {
     await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Run on Remote', cancellable: false },
         async (progress) => {
-            progress.report({ message: 'Saving & syncing project...' });
+            progress.report({ message: 'Syncing...' });
             await vscode.workspace.saveAll(false);
 
             const syncLog = vscode.window.createOutputChannel('Remote Run');
             try {
-                await syncProject(cfg, wsPath, syncLog, settings.syncExcludes);
+                await syncFile(cfg, wsPath, relativeFile, syncLog);
             } catch (e) {
                 const msg = (e as Error).message;
                 syncLog.appendLine(`[plugin] sync failed: ${msg}`);
