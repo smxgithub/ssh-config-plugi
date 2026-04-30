@@ -244,7 +244,7 @@ function buildRemoteRunCommand(cfg: RemoteConfig, remoteRelative: string): strin
 function buildRemoteShellCommand(cfg: RemoteConfig): string {
     const root = escapeBashSingleQuoted(cfg.remoteProjectRoot);
     const activation = buildEnvActivation(cfg, getSettings().pythonBinary);
-    return `cd '${root}' && ${activation} && DISPLAY= exec bash`;
+    return `cd '${root}' && ${activation} && unset DISPLAY && exec bash`;
 }
 
 // --- Validation ---
